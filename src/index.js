@@ -5,39 +5,54 @@ const cors = require("cors");
 
 const app = express();
 app.use(cors());
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://meeting-front-kappa.vercel.app", // Ensure this is your frontend URL
+    origin: "https://meeting-front-kappa.vercel.app",
   },
 });
 
-const users = {};
+const rooms = {};
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  socket.on("join-global", () => {
-    users[socket.id] = socket.id;
+  socket.on("join-room", (roomId) => {
+    console.log(`User ${socket.id} joining room: ${roomId}`);
 
-    // Notify other users about the new connection
-    socket.broadcast.emit("user-connected", socket.id);
+    if (!rooms[roomId]) {
+      rooms[roomId] = [];
+    }
 
-    // Handle signaling (offer, answer, and ICE candidates)
-    socket.on("signal", ({ signal, sender }) => {
-      if (users[sender]) {
-        console.log("Forwarding signal from:", sender);
-        socket.broadcast.to(sender).emit("signal", { signal, sender: socket.id });
-      }
-    });
+    rooms[roomId].push(socket.id);
+    socket.join(roomId);
 
-    // Handle disconnecting users
-    socket.on("disconnect", () => {
-      delete users[socket.id];
-      socket.broadcast.emit("user-disconnected", socket.id);
-      console.log("User disconnected:", socket.id);
-    });
+    socket.to(roomId).emit("user-connected", socket.id);
+
+    io.to(roomId).emit("update-participants", rooms[roomId]);
+  });
+
+  socket.on("signal", ({ signal, recipient }) => {
+    console.log(`Forwarding signal from ${socket.id} to ${recipient}`);
+    socket.to(recipient).emit("signal", { signal, sender: socket.id });
+  });
+
+  socket.on("send-message", ({ roomId, message }) => {
+    console.log(`Message from ${socket.id} in room ${roomId}: ${message}`);
+    io.to(roomId).emit("receive-message", { sender: socket.id, message });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+
+    for (const roomId in rooms) {
+      rooms[roomId] = rooms[roomId].filter((userId) => userId !== socket.id);
+
+      io.to(roomId).emit("user-disconnected", socket.id);
+      io.to(roomId).emit("update-participants", rooms[roomId]);
+    }
   });
 });
 
