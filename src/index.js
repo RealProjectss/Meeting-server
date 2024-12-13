@@ -16,14 +16,11 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // When a user joins a room
   socket.on("join-room", (roomId) => {
     socket.join(roomId);
-    console.log(`${socket.id} joined room: ${roomId}`);
     socket.to(roomId).emit("user-joined", socket.id);
   });
 
-  // Signaling for WebRTC
   socket.on("signal", ({ roomId, signal, sender }) => {
     socket.to(roomId).emit("signal", { signal, sender });
   });
