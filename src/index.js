@@ -35,7 +35,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("signal", ({ signal, recipient }) => {
-    console.log(`Forwarding signal from ${socket.id} to ${recipient}`);
+    if (!rooms[roomId].includes(recipient)) {
+      console.error(`Recipient ${recipient} not in room ${roomId}`);
+      return;
+    }
     socket.to(recipient).emit("signal", { signal, sender: socket.id });
   });
 
