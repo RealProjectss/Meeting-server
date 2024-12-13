@@ -9,7 +9,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
+    origin: "https://meeting-front-kappa.vercel.app", // Ensure this URL matches your front-end URL
   },
 });
 
@@ -27,7 +27,7 @@ io.on("connection", (socket) => {
     // Handle signaling
     socket.on("signal", ({ signal, sender }) => {
       if (users[sender]) {
-        socket.to(sender).emit("signal", { signal, sender: socket.id });
+        socket.broadcast.to(sender).emit("signal", { signal, sender: socket.id });
       }
     });
 
