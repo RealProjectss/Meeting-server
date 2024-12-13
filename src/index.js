@@ -13,20 +13,30 @@ const io = new Server(server, {
   },
 });
 
+const users = {};
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  socket.on("join-room", (roomId) => {
-    socket.join(roomId);
-    socket.to(roomId).emit("user-joined", socket.id);
-  });
+  socket.on("join-global", () => {
+    users[socket.id] = socket.id;
 
-  socket.on("signal", ({ roomId, signal, sender }) => {
-    socket.to(roomId).emit("signal", { signal, sender });
-  });
+    // Notify other users that a new user has joined
+    socket.broadcast.emit("user-connected", socket.id);
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    // Handle signaling
+    socket.on("signal", ({ signal, sender }) => {
+      if (users[sender]) {
+        socket.to(sender).emit("signal", { signal, sender: socket.id });
+      }
+    });
+
+    // Handle disconnect
+    socket.on("disconnect", () => {
+      delete users[socket.id];
+      socket.broadcast.emit("user-disconnected", socket.id);
+      console.log("User disconnected:", socket.id);
+    });
   });
 });
 
