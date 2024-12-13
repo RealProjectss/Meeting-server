@@ -9,7 +9,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://meeting-front-kappa.vercel.app", // Ensure this URL matches your front-end URL
+    origin: "https://meeting-front-kappa.vercel.app", // Ensure this is your frontend URL
   },
 });
 
@@ -21,17 +21,18 @@ io.on("connection", (socket) => {
   socket.on("join-global", () => {
     users[socket.id] = socket.id;
 
-    // Notify other users that a new user has joined
+    // Notify other users about the new connection
     socket.broadcast.emit("user-connected", socket.id);
 
-    // Handle signaling
+    // Handle signaling (offer, answer, and ICE candidates)
     socket.on("signal", ({ signal, sender }) => {
       if (users[sender]) {
+        console.log("Forwarding signal from:", sender);
         socket.broadcast.to(sender).emit("signal", { signal, sender: socket.id });
       }
     });
 
-    // Handle disconnect
+    // Handle disconnecting users
     socket.on("disconnect", () => {
       delete users[socket.id];
       socket.broadcast.emit("user-disconnected", socket.id);
